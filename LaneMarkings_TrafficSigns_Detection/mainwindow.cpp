@@ -35,14 +35,16 @@ MainWindow::MainWindow(QWidget *parent) :
     //设置只读
     ui->textEdit_log->setReadOnly(true);
 
-    //获取当前时间
-    QDateTime current_date_time =QDateTime::currentDateTime();
-    //字符串化
-    m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
     //初始化打开视频文件标志
     m_openvideo_flag = 0;
     //初始化打开视频文件路径
     m_fileName = "";
+    //初始化暂停检测标志
+    m_stop_flag = 0;
+    //初始化开始检测标志
+    m_start_flag = 0;
+    //初始化结束检测标志
+    m_end_flag = 0;
 }
 
 MainWindow::~MainWindow()
@@ -63,12 +65,18 @@ void MainWindow::on_pushButton_open_clicked()
         m_fileName = fileName.toStdString();
         m_openvideo_flag = 1;
 
+        //获取当前时间
+        QDateTime current_date_time =QDateTime::currentDateTime();
+        m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
         ui->textEdit_log->append(m_current_date + " [Info] 打开视频文件成功，可以开始检测了...");
         ui->textEdit_log->moveCursor(QTextCursor::End); //将光标移到最后
     }
     else
     {
         m_openvideo_flag = 0;
+        //获取当前时间
+        QDateTime current_date_time =QDateTime::currentDateTime();
+        m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
         ui->textEdit_log->append(m_current_date + " [Info] 没有选择视频...");
         ui->textEdit_log->moveCursor(QTextCursor::End);
     }
@@ -78,12 +86,37 @@ void MainWindow::on_pushButton_open_clicked()
 */
 void MainWindow::on_pushButton_start_clicked()
 {
+    //获取当前时间
+    QDateTime current_date_time =QDateTime::currentDateTime();
+    m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
+
+    //已经在检测，再按开始  则显示在检测中
+    if(m_start_flag && m_stop_flag == 0)
+    {
+        ui->textEdit_log->append(m_current_date + " [Info] 在检测中...");
+        ui->textEdit_log->moveCursor(QTextCursor::End);
+        return;
+    }
+
+    //如果暂停，则恢复
+    if(m_stop_flag)
+    {
+        m_stop_flag = 0;
+        ui->textEdit_log->append(m_current_date + " [Info] 恢复检测...");
+        ui->textEdit_log->moveCursor(QTextCursor::End);
+        return;
+    }
+
+    //打开文件后 才可以开始检测
     if(m_openvideo_flag)
     {
+        //开始检测
+        m_start_flag = 1;
         if(!runLaneDetection(m_fileName))
         {
             ui->textEdit_log->append(m_current_date + " [Info] 检测完毕...");
             ui->textEdit_log->moveCursor(QTextCursor::End);
+            m_start_flag = 0;
         }
         else{
             ui->textEdit_log->append(m_current_date + " [Info] 视频文件打开失败...");
@@ -100,14 +133,32 @@ void MainWindow::on_pushButton_start_clicked()
 */
 void MainWindow::on_pushButton_stop_clicked()
 {
-    QMessageBox::information(this,tr("提示"),tr("停止检测"),0,0,0);
+    //暂停条件:要已经开始检测
+    if(m_start_flag)
+    {
+        //获取当前时间
+        QDateTime current_date_time =QDateTime::currentDateTime();
+        m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
+        ui->textEdit_log->append(m_current_date + " [Info] 已经暂停检测了...");
+        m_stop_flag = 1;
+    }else{
+        ui->textEdit_log->append(m_current_date + " [Info] 还没有开始检测了...");
+    }
+    ui->textEdit_log->moveCursor(QTextCursor::End);
 }
 /*
 *结束检测
 */
 void MainWindow::on_pushButton_end_clicked()
 {
-    QMessageBox::information(this,tr("提示"),tr("结束检测"),0,0,0);
+    m_end_flag = 1;
+    //获取当前时间
+    QDateTime current_date_time =QDateTime::currentDateTime();
+    m_current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
+    ui->textEdit_log->append(m_current_date + " [Info] 结束检测...");
+    ui->textEdit_log->moveCursor(QTextCursor::End);
+    m_start_flag = 0;
+    m_stop_flag = 0;
 }
 
 
@@ -126,7 +177,14 @@ int MainWindow::runLaneDetection(std::string fileName)
     ui->textEdit_log->append(m_current_date + " [Info] 开始检测...");
     ui->textEdit_log->moveCursor(QTextCursor::End);
 
-    cv::namedWindow("Lane", CV_WINDOW_AUTOSIZE);
+    //opencv窗口
+    cv::namedWindow("Lane");
+    // 显示最终输出图像
+    HWND hWnd = (HWND)cvGetWindowHandle("Lane");
+    HWND hRawWnd = ::GetParent(hWnd); //获得父窗口句柄
+    ShowWindow(hWnd, 0);     //0：的时候表示隐藏子窗口
+    ShowWindow(hRawWnd, 0);  //0：的时候表示隐藏父窗口
+
     LaneDetector lanedetector;  // 创建类对象
 
     cv::Mat img_denoise;
@@ -138,15 +196,23 @@ int MainWindow::runLaneDetection(std::string fileName)
     std::string turn;
     int flag_plot = -1;
 
+    ui->textEdit_log->append(m_current_date + " [Info] 检测中...");
+    ui->textEdit_log->moveCursor(QTextCursor::End);
+
     // 主算法启动。迭代视频的每一帧
     while (1)
     {
+
         if (cv::waitKey(50) == 30){ break; }
+        if (m_stop_flag){
+            continue;
+        }
         cap >> m_frame;
 
-        //没有数据则视频已读取完毕
-        if(!m_frame.data)
+        //没有数据则视频已读取完毕 或者 按了结束按钮
+        if(!m_frame.data || m_end_flag)
         {
+            m_end_flag = 0;
             //清除图片
             ui->label_video->clear();
             //恢复待定
@@ -173,6 +239,7 @@ int MainWindow::runLaneDetection(std::string fileName)
 //            cv::line( m_frame, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,255,255), 4, CV_AA);
 //        }
 
+        //检测车道线不为空
         if (!lines.empty())
         {
 
@@ -198,14 +265,12 @@ int MainWindow::runLaneDetection(std::string fileName)
             // 绘制车道检测
             flag_plot = lanedetector.plotLane(m_frame, lane, turn);
 
-//            // 显示最终输出图像
-            cv::imshow("Lane", m_frame);
-
+            //将图像显示到label中
             QImage image = QImage((uchar*)(m_frame.data), m_frame.cols, m_frame.rows, QImage::Format_RGB888);
             ui->label_video->setPixmap(QPixmap::fromImage(image));
             ui->label_video->show();
-
-            //cv::waitKey(25);
+            //暂停一段时间
+            cv::waitKey(25);
         }
         else
         {

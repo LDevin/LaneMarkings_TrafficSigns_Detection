@@ -31,8 +31,11 @@ private:
     Ui::MainWindow *ui;
     cv::Mat m_frame;            //视频的帧
     QString m_current_date;     //当前时间
-    int m_openvideo_flag;      //打开视频文件是否成功
+    int m_openvideo_flag;       //打开视频文件是否成功标志
     std::string m_fileName;     //视频文件
+    int m_stop_flag;            //暂停检测标志
+    int m_start_flag;           //开始检测标志
+    int m_end_flag;             //结束检测标志
 };
 
 #endif // MAINWINDOW_H
