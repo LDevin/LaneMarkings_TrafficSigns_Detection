@@ -55,3 +55,6 @@ LIBS += F:/Qt/install/x86/mingw/lib/libopencv_core320.dll.a\
         F:/Qt/install/x86/mingw/lib/libopencv_shape320.dll.a\
         F:/Qt/install/x86/mingw/lib/libopencv_superres320.dll.a\
         F:/Qt/install/x86/mingw/lib/libopencv_videostab320.dll.a
+
+RESOURCES += \
+    images.qrc

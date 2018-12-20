@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resource/switchOff.png</file>
+        <file>resource/switchOn.png</file>
+        <file>resource/switchOffHover.png</file>
+        <file>resource/switchOnHover.png</file>
+    </qresource>
+</RCC>

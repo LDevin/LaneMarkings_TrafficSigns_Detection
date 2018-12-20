@@ -2,18 +2,18 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include "LaneDetector.h"
-
+using namespace cv;
 // 高斯模糊
 /**
 *@功能 将高斯滤波器应用于输入图像以对其进行去噪
 *@参数 inputImage是视频的帧
 *@return output模糊和去噪的图像
 */
-cv::Mat LaneDetector::deNoise(cv::Mat inputImage)
+Mat LaneDetector::deNoise(Mat inputImage)
 {
-    cv::Mat output;
+    Mat output;
 
-    cv::GaussianBlur(inputImage, output, cv::Size(3, 3), 0, 0);
+    GaussianBlur(inputImage, output, Size(3, 3), 0, 0);
 
     return output;
 }
@@ -24,20 +24,20 @@ cv::Mat LaneDetector::deNoise(cv::Mat inputImage)
 *@参数 img_noise是高斯模糊后的帧
 *@return output只有边缘以白色表示的二进制图像
 */
-cv::Mat LaneDetector::edgeDetector(cv::Mat img_noise)
+Mat LaneDetector::edgeDetector(Mat img_noise)
 {
-    cv::Mat output;
+    Mat output;
 
     // 将图像从RGB转换为灰度化
-    cv::cvtColor(img_noise, output, cv::COLOR_RGB2GRAY);
+    cvtColor(img_noise, output, COLOR_RGB2GRAY);
 
     //大津法
-    cv::threshold(output, output, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+    threshold(output, output, 0, 255, THRESH_BINARY | THRESH_OTSU);
 
     //canny算子边缘检测
-    cv::Canny(output, output, 3, 9, 3);
+    Canny(output, output, 3, 9, 3);
 
-//    cv::imshow("output", output);
+//    imshow("output", output);
     return output;
 }
 
@@ -47,28 +47,28 @@ cv::Mat LaneDetector::edgeDetector(cv::Mat img_noise)
 *@参数 img_edges是前一个函数的边缘图像
 *@return output仅表示所需边缘的二进制图像
 */
-cv::Mat LaneDetector::mask(cv::Mat img_edges)
+Mat LaneDetector::mask(Mat img_edges)
 {
-    cv::Mat output;
-    cv::Mat mask = cv::Mat::zeros(img_edges.size(), img_edges.type());
+    Mat output;
+    Mat mask = Mat::zeros(img_edges.size(), img_edges.type());
 
     // 自己调出感兴趣的位置
-    cv::Point pts[4] = {
-        cv::Point(80, 368),
-        cv::Point(280, 210),
-        cv::Point(300, 210),
-        cv::Point(640, 368)
+    Point pts[4] = {
+        Point(80, 368),
+        Point(280, 210),
+        Point(320, 210),
+        Point(640, 368)
     };
 
     // 创建二进制多边形mask
-    cv::fillConvexPoly(mask, pts, 4, cv::Scalar(255, 0, 0));
+    fillConvexPoly(mask, pts, 4, Scalar(255, 0, 0));
 
     // 将img_edges和mask相乘得到output
-    cv::bitwise_and(img_edges, mask, output);
+    bitwise_and(img_edges, mask, output);
 
-//    cv::imshow("img_edges",img_edges);
-//    cv::imshow("mask",mask);
-//    cv::imshow("output",output);
+//    imshow("img_edges",img_edges);
+//    imshow("mask",mask);
+//    imshow("output",output);
 
     return output;
 }
@@ -79,12 +79,12 @@ cv::Mat LaneDetector::mask(cv::Mat img_edges)
 *@参数 img_mask是前一个函数的mask二进制图像
 *@return line包含图像中所有检测到的线条的矢量
 */
-std::vector<cv::Vec4i> LaneDetector::houghLines(cv::Mat img_mask)
+std::vector<Vec4i> LaneDetector::houghLines(Mat img_mask)
 {
-    std::vector<cv::Vec4i> line;
+    std::vector<Vec4i> line;
 
     // 通过反复试验选择rho和theta
-    cv::HoughLinesP(img_mask, line, 1, CV_PI / 180, 20, 20, 30);
+    HoughLinesP(img_mask, line, 1, CV_PI / 180, 20, 20, 30);
 
     return line;
 }
@@ -96,22 +96,22 @@ std::vector<cv::Vec4i> LaneDetector::houghLines(cv::Mat img_mask)
 *@参数 img_edges用于确定图像中心
 *@return output包含所有左右线的向量
 */
-std::vector<std::vector<cv::Vec4i> > LaneDetector::lineSeparation(std::vector<cv::Vec4i> lines, cv::Mat img_edges)
+std::vector<std::vector<Vec4i> > LaneDetector::lineSeparation(std::vector<Vec4i> lines, Mat img_edges)
 {
-    std::vector<std::vector<cv::Vec4i> > output(2);
+    std::vector<std::vector<Vec4i> > output(2);
     size_t j = 0;
-    cv::Point ini;
-    cv::Point fini;
+    Point ini;
+    Point fini;
     double slope_thresh = 0.3;
     std::vector<double> slopes;
-    std::vector<cv::Vec4i> selected_lines;
-    std::vector<cv::Vec4i> right_lines, left_lines;
+    std::vector<Vec4i> selected_lines;
+    std::vector<Vec4i> right_lines, left_lines;
 
     // 计算所有检测到的线的斜率
     for (auto i : lines)
     {
-        ini = cv::Point(i[0], i[1]);
-        fini = cv::Point(i[2], i[3]);
+        ini = Point(i[0], i[1]);
+        fini = Point(i[2], i[3]);
 
         // slope = (y1 - y0)/(x1 - x0)
         double slope = (static_cast<double>(fini.y) - static_cast<double>(ini.y)) / (static_cast<double>(fini.x) - static_cast<double>(ini.x) + 0.00001);
@@ -128,8 +128,8 @@ std::vector<std::vector<cv::Vec4i> > LaneDetector::lineSeparation(std::vector<cv
     // 将线条分成右线和左线
     img_center = static_cast<double>((img_edges.cols / 2));
     while (j < selected_lines.size()) {
-        ini = cv::Point(selected_lines[j][0], selected_lines[j][1]);
-        fini = cv::Point(selected_lines[j][2], selected_lines[j][3]);
+        ini = Point(selected_lines[j][0], selected_lines[j][1]);
+        fini = Point(selected_lines[j][2], selected_lines[j][3]);
 
         // 将线分类为左侧或右侧的条件
         if (slopes[j] > 0 && fini.x > img_center && ini.x > img_center)
@@ -158,25 +158,25 @@ std::vector<std::vector<cv::Vec4i> > LaneDetector::lineSeparation(std::vector<cv
 *@参数 inputImage用于获取行数
 *@return output包含两个车道边界线的初始点和最终点
 */
-std::vector<cv::Point> LaneDetector::regression(std::vector<std::vector<cv::Vec4i> > left_right_lines, cv::Mat inputImage)
+std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > left_right_lines, Mat inputImage)
 {
-    std::vector<cv::Point> output(4);
-    cv::Point ini;
-    cv::Point fini;
-    cv::Point ini2;
-    cv::Point fini2;
-    cv::Vec4d right_line;
-    cv::Vec4d left_line;
-    std::vector<cv::Point> right_pts;
-    std::vector<cv::Point> left_pts;
+    std::vector<Point> output(4);
+    Point ini;
+    Point fini;
+    Point ini2;
+    Point fini2;
+    Vec4d right_line;
+    Vec4d left_line;
+    std::vector<Point> right_pts;
+    std::vector<Point> left_pts;
 
     // 如果检测到右线，则使用线的所有初始点和最终点拟合线
     if (right_flag == true)
     {
         for (auto i : left_right_lines[0])
         {
-            ini = cv::Point(i[0], i[1]);
-            fini = cv::Point(i[2], i[3]);
+            ini = Point(i[0], i[1]);
+            fini = Point(i[2], i[3]);
 
             right_pts.push_back(ini);
             right_pts.push_back(fini);
@@ -185,9 +185,9 @@ std::vector<cv::Point> LaneDetector::regression(std::vector<std::vector<cv::Vec4
         if (right_pts.size() > 0)
         {
             //  直线拟合函数(组成右边线)
-            cv::fitLine(right_pts, right_line, CV_DIST_L2, 0, 0.01, 0.01);
+            fitLine(right_pts, right_line, CV_DIST_L2, 0, 0.01, 0.01);
             right_m = right_line[1] / right_line[0];
-            right_b = cv::Point(right_line[2], right_line[3]);
+            right_b = Point(right_line[2], right_line[3]);
         }
     }
 
@@ -197,8 +197,8 @@ std::vector<cv::Point> LaneDetector::regression(std::vector<std::vector<cv::Vec4
     {
         for (auto j : left_right_lines[1])
         {
-            ini2 = cv::Point(j[0], j[1]);
-            fini2 = cv::Point(j[2], j[3]);
+            ini2 = Point(j[0], j[1]);
+            fini2 = Point(j[2], j[3]);
 
             left_pts.push_back(ini2);
             left_pts.push_back(fini2);
@@ -207,15 +207,16 @@ std::vector<cv::Point> LaneDetector::regression(std::vector<std::vector<cv::Vec4
         if (left_pts.size() > 0)
         {
             //  直线拟合函数(组成左边线)
-            cv::fitLine(left_pts, left_line, CV_DIST_L2, 0, 0.01, 0.01);
+            fitLine(left_pts, left_line, CV_DIST_L2, 0, 0.01, 0.01);
             left_m = left_line[1] / left_line[0];
-            left_b = cv::Point(left_line[2], left_line[3]);
+            left_b = Point(left_line[2], left_line[3]);
         }
     }
 
     // 获得了一个斜率和偏移点，应用线方程来获得线点
     int ini_y = inputImage.rows;
-    int fin_y = 210;        //与刚兴趣的区域相同
+    //与刚兴趣的区域相同
+    int fin_y = 210;
 
     double right_ini_x = ((ini_y - right_b.y) / right_m) + right_b.x;
     double right_fin_x = ((fin_y - right_b.y) / right_m) + right_b.x;
@@ -223,10 +224,10 @@ std::vector<cv::Point> LaneDetector::regression(std::vector<std::vector<cv::Vec4
     double left_ini_x = ((ini_y - left_b.y) / left_m) + left_b.x;
     double left_fin_x = ((fin_y - left_b.y) / left_m) + left_b.x;
 
-    output[0] = cv::Point(right_ini_x, ini_y);
-    output[1] = cv::Point(right_fin_x, fin_y);
-    output[2] = cv::Point(left_ini_x, ini_y);
-    output[3] = cv::Point(left_fin_x, fin_y);
+    output[0] = Point(right_ini_x, ini_y);
+    output[1] = Point(right_fin_x, fin_y);
+    output[2] = Point(left_ini_x, ini_y);
+    output[3] = Point(left_fin_x, fin_y);
 
     return output;
 }
@@ -265,10 +266,10 @@ std::string LaneDetector::predictTurn()
 *@参数 turn是包含转弯信息的输出字符串
 *@return 该函数返回0
 */
-int LaneDetector::plotLane(cv::Mat inputImage, std::vector<cv::Point> lane, std::string turn)
+int LaneDetector::plotLane(Mat inputImage, std::vector<Point> lane, std::string turn)
 {
-    std::vector<cv::Point> poly_points;
-    cv::Mat output;
+    std::vector<Point> poly_points;
+    Mat output;
 
     // 创建透明多边形以更好地显示通道
     inputImage.copyTo(output);
@@ -276,15 +277,15 @@ int LaneDetector::plotLane(cv::Mat inputImage, std::vector<cv::Point> lane, std:
     poly_points.push_back(lane[0]);
     poly_points.push_back(lane[1]);
     poly_points.push_back(lane[3]);
-    cv::fillConvexPoly(output, poly_points, cv::Scalar(0, 0, 255), CV_AA, 0);
-    cv::addWeighted(output, 0.3, inputImage, 1.0 - 0.3, 0, inputImage);
+    fillConvexPoly(output, poly_points, Scalar(0, 0, 255), CV_AA, 0);
+    addWeighted(output, 0.3, inputImage, 1.0 - 0.3, 0, inputImage);
 
     // 绘制车道边界的两条线
-    cv::line(inputImage, lane[0], lane[1], cv::Scalar(0, 255, 255), 5, CV_AA);
-    cv::line(inputImage, lane[2], lane[3], cv::Scalar(0, 255, 255), 5, CV_AA);
+    line(inputImage, lane[0], lane[1], Scalar(0, 255, 255), 5, CV_AA);
+    line(inputImage, lane[2], lane[3], Scalar(0, 255, 255), 5, CV_AA);
 
     // 绘制转弯信息
-    cv::putText(inputImage, turn, cv::Point(50, 90), cv::FONT_HERSHEY_COMPLEX_SMALL, 3, cvScalar(0, 255, 0), 1, CV_AA);
+    putText(inputImage, turn, Point(50, 90), FONT_HERSHEY_COMPLEX_SMALL, 3, cvScalar(0, 255, 0), 1, CV_AA);
 
     return 0;
 }
