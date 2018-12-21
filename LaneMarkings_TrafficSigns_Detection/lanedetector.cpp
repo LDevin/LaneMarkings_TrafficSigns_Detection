@@ -41,9 +41,9 @@ Mat LaneDetector::edgeDetector(Mat img_noise)
     return output;
 }
 
-// 掩盖边缘图像
+// MASK边缘图像
 /**
-*@功能 掩盖图像，以便仅检测构成通道一部分的边缘
+*@功能 MASK图像，以便仅检测构成通道一部分的边缘
 *@参数 img_edges是前一个函数的边缘图像
 *@return output仅表示所需边缘的二进制图像
 */
@@ -75,7 +75,7 @@ Mat LaneDetector::mask(Mat img_edges)
 
 // 获取HOUGH线
 /**
-*@功能 获取掩蔽图像中的所有线段，这些线段将成为通道边界的一部分
+*@功能 获取MASK图像中的所有线段，这些线段将成为通道边界的一部分
 *@参数 img_mask是前一个函数的mask二进制图像
 *@return line包含图像中所有检测到的线条的矢量
 */
@@ -126,21 +126,21 @@ std::vector<std::vector<Vec4i> > LaneDetector::lineSeparation(std::vector<Vec4i>
     }
 
     // 将线条分成右线和左线
-    img_center = static_cast<double>((img_edges.cols / 2));
+    m_image_center = static_cast<double>((img_edges.cols / 2));
     while (j < selected_lines.size()) {
         ini = Point(selected_lines[j][0], selected_lines[j][1]);
         fini = Point(selected_lines[j][2], selected_lines[j][3]);
 
         // 将线分类为左侧或右侧的条件
-        if (slopes[j] > 0 && fini.x > img_center && ini.x > img_center)
+        if (slopes[j] > 0 && fini.x > m_image_center && ini.x > m_image_center)
         {
             right_lines.push_back(selected_lines[j]);
-            right_flag = true;
+            m_right_flag = true;
         }
-        else if (slopes[j] < 0 && fini.x < img_center && ini.x < img_center)
+        else if (slopes[j] < 0 && fini.x < m_image_center && ini.x < m_image_center)
         {
             left_lines.push_back(selected_lines[j]);
-            left_flag = true;
+            m_left_flag = true;
         }
         j++;
     }
@@ -171,7 +171,7 @@ std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > lef
     std::vector<Point> left_pts;
 
     // 如果检测到右线，则使用线的所有初始点和最终点拟合线
-    if (right_flag == true)
+    if (m_right_flag == true)
     {
         for (auto i : left_right_lines[0])
         {
@@ -186,14 +186,14 @@ std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > lef
         {
             //  直线拟合函数(组成右边线)
             fitLine(right_pts, right_line, CV_DIST_L2, 0, 0.01, 0.01);
-            right_m = right_line[1] / right_line[0];
-            right_b = Point(right_line[2], right_line[3]);
+            m_right_m = right_line[1] / right_line[0];
+            m_right_b = Point(right_line[2], right_line[3]);
         }
     }
 
 
     // 如果检测到左线，则使用线的所有初始点和最终点拟合一条线
-    if (left_flag == true)
+    if (m_left_flag == true)
     {
         for (auto j : left_right_lines[1])
         {
@@ -208,8 +208,8 @@ std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > lef
         {
             //  直线拟合函数(组成左边线)
             fitLine(left_pts, left_line, CV_DIST_L2, 0, 0.01, 0.01);
-            left_m = left_line[1] / left_line[0];
-            left_b = Point(left_line[2], left_line[3]);
+            m_left_m = left_line[1] / left_line[0];
+            m_left_b = Point(left_line[2], left_line[3]);
         }
     }
 
@@ -218,11 +218,11 @@ std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > lef
     //与刚兴趣的区域相同
     int fin_y = 210;
 
-    double right_ini_x = ((ini_y - right_b.y) / right_m) + right_b.x;
-    double right_fin_x = ((fin_y - right_b.y) / right_m) + right_b.x;
+    double right_ini_x = ((ini_y - m_right_b.y) / m_right_m) + m_right_b.x;
+    double right_fin_x = ((fin_y - m_right_b.y) / m_right_m) + m_right_b.x;
 
-    double left_ini_x = ((ini_y - left_b.y) / left_m) + left_b.x;
-    double left_fin_x = ((fin_y - left_b.y) / left_m) + left_b.x;
+    double left_ini_x = ((ini_y - m_left_b.y) / m_left_m) + m_left_b.x;
+    double left_fin_x = ((fin_y - m_left_b.y) / m_left_m) + m_left_b.x;
 
     output[0] = Point(right_ini_x, ini_y);
     output[1] = Point(right_fin_x, fin_y);
@@ -244,15 +244,15 @@ std::string LaneDetector::predictTurn()
     double vanish_x;
     double thr_vp = 10;
 
-    // 消失点是两条车道边界线相交的点
-    vanish_x = static_cast<double>(((right_m*right_b.x) - (left_m*left_b.x) - right_b.y + left_b.y) / (right_m - left_m));
+    // 消失点是两条车道边界线相交的点  m1x+b1-y1 = m2x+b2-y2
+    vanish_x = static_cast<double>(((m_right_m*m_right_b.x) - (m_left_m*m_left_b.x) - m_right_b.y + m_left_b.y) / (m_right_m - m_left_m));
 
     // 消失点位置决定了道路转弯的位置
-    if (vanish_x < (img_center - thr_vp))
+    if (vanish_x < (m_image_center - thr_vp))
         output = "Left Turn";
-    else if (vanish_x >(img_center + thr_vp))
+    else if (vanish_x >(m_image_center + thr_vp))
         output = "Right Turn";
-    else if (vanish_x >= (img_center - thr_vp) && vanish_x <= (img_center + thr_vp))
+    else if (vanish_x >= (m_image_center - thr_vp) && vanish_x <= (m_image_center + thr_vp))
         output = "Straight";
 
     return output;
@@ -266,7 +266,7 @@ std::string LaneDetector::predictTurn()
 *@参数 turn是包含转弯信息的输出字符串
 *@return 该函数返回0
 */
-int LaneDetector::plotLane(Mat inputImage, std::vector<Point> lane, std::string turn)
+void LaneDetector::plotLane(Mat inputImage, std::vector<Point> lane, std::string turn)
 {
     std::vector<Point> poly_points;
     Mat output;
@@ -286,6 +286,4 @@ int LaneDetector::plotLane(Mat inputImage, std::vector<Point> lane, std::string 
 
     // 绘制转弯信息
     putText(inputImage, turn, Point(50, 90), FONT_HERSHEY_COMPLEX_SMALL, 3, cvScalar(0, 255, 0), 1, CV_AA);
-
-    return 0;
 }

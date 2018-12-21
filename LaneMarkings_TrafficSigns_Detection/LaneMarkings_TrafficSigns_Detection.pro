@@ -26,11 +26,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    lanedetector.cpp
+    lanedetector.cpp \
+    signdetector.cpp
 
 HEADERS += \
         mainwindow.h \
-    lanedetector.h
+    lanedetector.h \
+    signdetector.h
 
 FORMS += \
         mainwindow.ui
