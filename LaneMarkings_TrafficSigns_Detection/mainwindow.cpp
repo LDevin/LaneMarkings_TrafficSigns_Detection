@@ -74,6 +74,20 @@ MainWindow::MainWindow(QWidget *parent) :
     //初始化交通标志检测标志
     m_sign_flag = true;
 
+    //初始化图片列表
+    m_imageList = new QListWidget;
+    //定义QListWidget对象
+    m_imageList->resize(480,340);
+    //设置QListWidget的显示模式
+    m_imageList->setViewMode(QListView::IconMode);
+    //设置QListWidget中单元项的图片大小
+    m_imageList->setIconSize(QSize(100,100));
+    //设置QListWidget中单元项的间距
+    m_imageList->setSpacing(10);
+    //设置自动适应布局调整（Adjust适应，Fixed不适应），默认不适应
+    m_imageList->setResizeMode(QListWidget::Adjust);
+    //设置不能移动
+    m_imageList->setMovement(QListWidget::Static);
 }
 
 MainWindow::~MainWindow()
@@ -88,7 +102,7 @@ void MainWindow::on_pushButton_open_clicked()
     //获取当前时间
     QDateTime current_date_time =QDateTime::currentDateTime();
     QString current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
-    if(m_openvideo_flag)
+    if(m_openvideo_flag && m_start_flag)
     {
         ui->textEdit_log->append(current_date + " [Info] 请结束当前视频检测...");
         ui->textEdit_log->moveCursor(QTextCursor::End);
@@ -255,6 +269,7 @@ int MainWindow::runLaneDetection(std::string fileName)
     m_label_flag[2] = false;
     m_label_flag[3] = false;
     m_label_flag[4] = false;
+    int num = 1;    //图片号
 
     current_date_time =QDateTime::currentDateTime();
     current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
@@ -276,9 +291,17 @@ int MainWindow::runLaneDetection(std::string fileName)
         {
             //清除图片
             ui->label_video->clear();
+            ui->label_sign1->clear();
+            ui->label_sign2->clear();
+            ui->label_sign3->clear();
+            ui->label_sign4->clear();
             //恢复待定
             QPixmap pixmap("model.jpg");
             ui->label_video->setPixmap(pixmap);
+            ui->label_sign1->setPixmap(pixmap);
+            ui->label_sign2->setPixmap(pixmap);
+            ui->label_sign3->setPixmap(pixmap);
+            ui->label_sign4->setPixmap(pixmap);
             cv::destroyAllWindows();
             return 0;
         }
@@ -366,7 +389,7 @@ int MainWindow::runLaneDetection(std::string fileName)
             for (int i = 0; i < contours.size(); i++)
             {
                 Rect rect = boundRect[i];
-                //首先进行一定的限制，筛选出区域
+                //首先进行一定的限制，筛选出轮廓
 
                 //若轮廓矩形内部还包含着矩形，则将被包含的小矩形取消
                 bool inside = false;
@@ -407,12 +430,15 @@ int MainWindow::runLaneDetection(std::string fileName)
                 //第一次检测到，直接赋值给sign_count
                 if(first)
                 {
-                    for(int i=0; i<index.size();i++)
+                    for(int i=0; i< cur_count;i++)
                     {
 //                        Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
                         Mat roi = m_frame.clone();
                         cv::cvtColor(roi, roi, CV_BGR2RGB);//颜色空间转换
+                        QString fileName = "signimages/"+QString::number(num)+".jpg";
+                        num++;
                         QImage image = QImage((uchar*)(roi.data), roi.cols, roi.rows, QImage::Format_RGB888);
+                        image.save(fileName,"JPG");
                         selectLabelShow(image);
                     }
                     m_sign_count = cur_count;
@@ -425,24 +451,30 @@ int MainWindow::runLaneDetection(std::string fileName)
                         m_sign_count += cur_count;
                         isZero = false;
 
-                        for(int i=0; i<index.size();i++)
+                        for(int i=0; i< cur_count;i++)
                         {
 //                            Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
                             Mat roi = m_frame.clone();
                             cv::cvtColor(roi, roi, CV_BGR2RGB);//颜色空间转换
+                            QString fileName = "signimages/"+QString::number(num)+".jpg";
+                            num++;
                             QImage image = QImage((uchar*)(roi.data), roi.cols, roi.rows, QImage::Format_RGB888);
+                            image.save(fileName,"JPG");
                             selectLabelShow(image);
                         }
                     }else if(cur_count > last_count)  //由检测1个，持续当前检测变成2时，则增加了1个
                     {
                         m_sign_count += (cur_count-last_count);
 
-                        for(int i=0; i<index.size();i++)
+                        for(int i=0; i<(cur_count-last_count);i++)
                         {
 //                            Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
                             Mat roi = m_frame.clone();
                             cv::cvtColor(roi, roi, CV_BGR2RGB);//颜色空间转换
+                            QString fileName = "signimages/"+QString::number(num)+".jpg";
+                            num++;
                             QImage image = QImage((uchar*)(roi.data), roi.cols, roi.rows, QImage::Format_RGB888);
+                            image.save(fileName,"JPG");
                             selectLabelShow(image);
                         }
                     }
@@ -452,6 +484,7 @@ int MainWindow::runLaneDetection(std::string fileName)
             else{
                 isZero = true;
             }
+            //index.erase(index.begin(),index.end());
         }
         /*********上面是：基于RGB的交通标志检测*********/
 
@@ -615,5 +648,47 @@ void MainWindow::selectLabelShow(QImage image)
         m_label_flag[2] = false;
         m_label_flag[3] = false;
         m_label_flag[4] = false;
+    }
+}
+/**
+* 显示检测到的交通标志图片列表
+*
+*/
+void MainWindow::showImageList()
+{
+    QStringList fileNames;
+    for(int i=1; i<= m_sign_count; i++)
+    {
+        QString s;
+        fileNames.append("signimages/" + QString::number(i) + ".jpg");
+    }
+    for(auto tmp : fileNames)
+    {
+        //定义QListWidgetItem对象
+        QListWidgetItem *imageItem = new QListWidgetItem;
+        //为单元项设置属性
+        imageItem->setIcon(QIcon(tmp));
+        imageItem->setText(tmp.remove(0,11));       //remove(0,11)去除signimages/
+        //重新设置单元项图片的宽度和高度
+        imageItem->setSizeHint(QSize(100,100));
+        //将单元项添加到QListWidget中
+        m_imageList->addItem(imageItem);
+    }
+    //显示QListWidget
+    m_imageList->show();
+}
+
+void MainWindow::on_pushButton_showSign_clicked()
+{
+    if(m_sign_count)
+    {
+        m_imageList->clear();
+        showImageList();
+    }
+    else{
+        QDateTime current_date_time =QDateTime::currentDateTime();
+        QString current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
+        ui->textEdit_log->append(current_date + " [Info] 没有交通标志数据...");
+        ui->textEdit_log->moveCursor(QTextCursor::End);
     }
 }

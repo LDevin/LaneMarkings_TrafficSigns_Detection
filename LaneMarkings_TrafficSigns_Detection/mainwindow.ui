@@ -262,6 +262,25 @@ QCheckBox::indicator:checked:pressed {
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_showSign">
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>120</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>showSign</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
         </layout>

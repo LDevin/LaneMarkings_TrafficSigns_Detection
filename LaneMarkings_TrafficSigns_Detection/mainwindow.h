@@ -21,6 +21,7 @@ protected:
     void fillHole(const cv::Mat srcBw, cv::Mat &dstBw);
     bool isInside(cv::Rect rect1, cv::Rect rect2);
     void selectLabelShow(QImage image);
+    void showImageList();
 private slots:
     void on_pushButton_open_clicked();
 
@@ -34,6 +35,8 @@ private slots:
 
     void on_checkBox_sign_clicked();
 
+    void on_pushButton_showSign_clicked();
+
 private:
     Ui::MainWindow *ui;
     cv::Mat m_frame;                //视频的帧
@@ -46,6 +49,7 @@ private:
     bool m_sign_flag;               //交通标志检测标志
     bool m_label_flag[5];           //label是否加载了交通标志图片
     int m_sign_count;               //检测到的交通标志的总个数
+    QListWidget *m_imageList;       //图片列表
 };
 
 #endif // MAINWINDOW_H
