@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     //设置标题
-    setWindowTitle("车道线和交通标志检测--作者：张朝中");
+    setWindowTitle("车道线和交通标志检测--DGUT：张朝中  https://github.com/ZhangChaoZhong");
 
     //设置自适应
     ui->label_video->setScaledContents(true);
