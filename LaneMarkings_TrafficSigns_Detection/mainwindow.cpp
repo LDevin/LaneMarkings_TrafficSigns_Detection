@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->label_sign4->setMinimumSize(266,159);
 
     //加载图片
-    QPixmap pixmap("model.jpg");
+    QPixmap pixmap(tr("resource/model.jpg"));
     ui->label_video->setPixmap(pixmap);
     ui->label_sign1->setPixmap(pixmap);
     ui->label_sign2->setPixmap(pixmap);
@@ -358,7 +358,7 @@ int MainWindow::runDetection(std::string fileName)
             ui->label_sign3->clear();
             ui->label_sign4->clear();
             //恢复待定
-            QPixmap pixmap("model.jpg");
+            QPixmap pixmap(tr("resource/model.jpg"));
             ui->label_video->setPixmap(pixmap);
             ui->label_sign1->setPixmap(pixmap);
             ui->label_sign2->setPixmap(pixmap);
