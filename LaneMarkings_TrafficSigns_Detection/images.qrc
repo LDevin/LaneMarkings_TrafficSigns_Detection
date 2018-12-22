@@ -4,5 +4,11 @@
         <file>resource/switchOn.png</file>
         <file>resource/switchOffHover.png</file>
         <file>resource/switchOnHover.png</file>
+        <file>resource/logo.png</file>
+        <file>resource/model.jpg</file>
+        <file>resource/open.ico</file>
+        <file>resource/start.ico</file>
+        <file>resource/stop.ico</file>
+        <file>resource/文档.pdf</file>
     </qresource>
 </RCC>
