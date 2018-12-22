@@ -38,24 +38,24 @@ Mat SignDetector::colorSegmentation(Mat src)
                 matRgb.at<uchar>(y, x) = 255;
                 continue;
             }
-//                    //绿色
-//                    if (G - R > 50 && G -B > 30)    //&& R < 100
-//                    {
-//                        matRgb.at<uchar>(y, x) = 255;
-//                        continue;
-//                    }
+            //绿色
+            if (G - R > 50 && G -B > 30)    //&& R < 100
+            {
+                matRgb.at<uchar>(y, x) = 255;
+                continue;
+            }
             //蓝色
             if (B - G > 50 && B - R > 50)   //&& G < 100
             {
                 matRgb.at<uchar>(y, x) = 255;
                 continue;
             }
-//                    //黄色
-//                    if (G - B > 50 && R - B > 50)
-//                    {
-//                        matRgb.at<uchar>(y, x) = 255;
-//                        continue;
-//                    }
+//            //黄色
+//            if (G - B > 50 && R - B > 50)
+//            {
+//                matRgb.at<uchar>(y, x) = 255;
+//                continue;
+//            }
         }
     }
     return matRgb;
@@ -97,6 +97,14 @@ Mat SignDetector::morphologyProcess(Mat src)
     return src;
 }
 
+
+
+/**
+*@功能 寻找轮廓
+*@参数 src源图像
+*@参数 contours轮廓点集的最小矩形
+* @return boundRect包围
+*/
 vector<Rect> SignDetector::myfindContours(Mat src, vector<vector<Point>> &contours)
 {
     vector<Vec4i> hierarchy;        //分层

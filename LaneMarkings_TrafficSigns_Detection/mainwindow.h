@@ -18,9 +18,9 @@ public:
 
 protected:
     int runDetection(std::string fileName);         //功能主要运行车道检测的主要算法输出video，绘制检测到的车道。
-    void selectLabelShow(QImage image); //选择对应的label来显示交通标志图片
+    void selectLabelShow(std::string fileName); //选择对应的label来显示交通标志图片
     void showImageList();               //显示检测到的交通标志图片列表
-    void showSaveImage();               //显示保存检测到的交通标志图片
+    void showSaveImage(cv::Mat &roi);        //显示保存检测到的交通标志图片
 private slots:
     void on_pushButton_open_clicked();      //打开视频文件-点击事件
     void on_pushButton_start_clicked();     //开始检测-点击事件
@@ -44,6 +44,9 @@ private:
     int m_sign_count;               //检测到的交通标志的总个数
     int m_num;                      //图片号
     QListWidget *m_imagelist;       //图片列表
+
+private:
+    void closeEvent(QCloseEvent *event);    //重载关闭事件
 };
 
 #endif // MAINWINDOW_H

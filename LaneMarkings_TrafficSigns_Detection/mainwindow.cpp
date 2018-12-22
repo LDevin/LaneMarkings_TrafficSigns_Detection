@@ -27,6 +27,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->label_sign3->setScaledContents(true);
     ui->label_sign4->setScaledContents(true);
 
+    //设置最小大小
+    ui->label_video->setMinimumSize(536,359);
+    ui->label_sign1->setMinimumSize(266,159);
+    ui->label_sign2->setMinimumSize(266,159);
+    ui->label_sign3->setMinimumSize(266,159);
+    ui->label_sign4->setMinimumSize(266,159);
+
     //加载图片
     QPixmap pixmap("model.jpg");
     ui->label_video->setPixmap(pixmap);
@@ -78,6 +85,8 @@ MainWindow::MainWindow(QWidget *parent) :
     m_lane_flag = true;
     //初始化交通标志检测标志
     m_sign_flag = true;
+    //初始化检测到的交通标志的个数
+    m_sign_count = 0;
 
     //初始化图片列表
     m_imagelist = new QListWidget;
@@ -98,6 +107,22 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    switch( QMessageBox::information(this,tr("提示"),tr("你确定退出该软件?"),tr("确定"), tr("取消"),0,1))
+    {
+    case 0:
+        m_end_flag = true;
+        cvWaitKey(100);
+        event->accept();
+        break;
+    case 1:
+    default:
+        event->ignore();
+        break;
+    }
 }
 
 
@@ -121,7 +146,7 @@ void MainWindow::on_pushButton_open_clicked()
 
     //获取文件路径
     auto fileName = QFileDialog::getOpenFileName(nullptr, "open video",
-           QDir::currentPath() + "/Videos", "video files(*.avi;*.mp4;*.wmv);;all files(*.*)");
+           QDir::currentPath() + "/Videos", "video files(*.avi;*.mp4;*.wmv;*.flv;);;all files(*.*)");
 
     current_date_time =QDateTime::currentDateTime();
     current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
@@ -263,9 +288,13 @@ int MainWindow::runDetection(std::string fileName)
     if (!cap.isOpened())
         return -1;
 
+    //视频时长 = 总帧数/(帧数/s)
+    int length = cap.get(CAP_PROP_FRAME_COUNT)/cap.get(CAP_PROP_FPS);
+
+    //输出信息
     QDateTime current_date_time =QDateTime::currentDateTime();
     QString current_date =current_date_time.toString("yyyy.MM.dd hh:mm:ss");
-    ui->textEdit_log->append(current_date + " [Info] 开始检测...");
+    ui->textEdit_log->append(current_date + " [Info] 开始检测---该视频时长" + QString::number(length) + "s");
     ui->textEdit_log->moveCursor(QTextCursor::End);
 
     //opencv窗口
@@ -309,9 +338,8 @@ int MainWindow::runDetection(std::string fileName)
     // 主算法启动。迭代视频的每一帧
     while (1)
     {
-        //暂停25ms
-        if (cv::waitKey(25) == 30){ break; }
-
+        //暂停10ms
+        cv::waitKey(25);
         //暂停检测
         if (m_stop_flag){
             continue;
@@ -336,7 +364,7 @@ int MainWindow::runDetection(std::string fileName)
             ui->label_sign2->setPixmap(pixmap);
             ui->label_sign3->setPixmap(pixmap);
             ui->label_sign4->setPixmap(pixmap);
-            //销毁所opencv窗口
+            //销毁所有opencv窗口
             cv::destroyAllWindows();
             return 0;
         }
@@ -367,6 +395,8 @@ int MainWindow::runDetection(std::string fileName)
             //记住这个变量要重新置0，否则会加上之前的个数，出错
             cur_count =0;
 
+            //tmp给roi截取
+            Mat tmp = m_frame.clone();
             //首先进行一定的限制，筛选出轮廓
             for (int i = 0; i < contours.size(); i++)
             {
@@ -394,7 +424,7 @@ int MainWindow::runDetection(std::string fileName)
                 //float Area = (float)rect.width * (float)rect.height;
                 float dConArea = (float)contourArea(contours[i]);
                 //float dConLen = (float)arcLength(contours[i], 1);
-                if (dConArea < 600)
+                if (dConArea < 700)
                     continue;
                 if(ratio > 3)
                     continue;
@@ -425,8 +455,8 @@ int MainWindow::runDetection(std::string fileName)
                     //将检测到图像显示到label,并保存
                     for(int i=0; i< cur_count;i++)
                     {
-                        //Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
-                        showSaveImage();
+                        Mat roi = tmp(Rect(boundRect[index[i]].tl().x,boundRect[index[i]].tl().y,boundRect[index[i]].width,boundRect[index[i]].height));
+                        showSaveImage(roi);
                     }
                 }
                 else{//非第一次检测
@@ -440,8 +470,8 @@ int MainWindow::runDetection(std::string fileName)
                         //将检测到图像显示到label,并保存
                         for(int i=0; i< cur_count;i++)
                         {
-                            //Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
-                            showSaveImage();
+                            Mat roi = tmp(Rect(boundRect[index[i]].tl().x,boundRect[index[i]].tl().y,boundRect[index[i]].width,boundRect[index[i]].height));
+                            showSaveImage(roi);
                         }
                     }else if(cur_count > last_count)  //(3)由检测1个，持续当前检测变成2时，则增加了1个
                     {
@@ -450,8 +480,8 @@ int MainWindow::runDetection(std::string fileName)
                         //将检测到图像显示到label,并保存
                         for(int i=0; i<(cur_count-last_count);i++)
                         {
-                            //Mat roi = m_frame(Rect(boundRect[index[i]].x,boundRect[index[i]].y,boundRect[index[i]].width,boundRect[index[i]].height));
-                            showSaveImage();
+                            Mat roi = tmp(Rect(boundRect[index[i]].tl().x,boundRect[index[i]].tl().y,boundRect[index[i]].width,boundRect[index[i]].height));
+                            showSaveImage(roi);
                         }
                     }
                 }
@@ -462,6 +492,7 @@ int MainWindow::runDetection(std::string fileName)
                 //将没有检测到标志置true
                 isZero = true;
             }
+            index.erase(index.begin(),index.end());
         }
         /*********上面是：基于RGB的交通标志检测*********/
 
@@ -573,27 +604,29 @@ void MainWindow::on_checkBox_sign_clicked()
 *@功能 选择对应的label来显示交通标志图片
 *@参数 image交通标志图片
 */
-void MainWindow::selectLabelShow(QImage image)
+void MainWindow::selectLabelShow(string fileName)
 {
+    //创建QPixmap
+    QPixmap image(QString::fromStdString(fileName));
     //按顺序显示检测到的图片
     if(!m_label_flag[1])
     {
-        ui->label_sign1->setPixmap(QPixmap::fromImage(image));
+        ui->label_sign1->setPixmap(image);
         m_label_flag[1] = true;
     }
     else if(!m_label_flag[2])
     {
-        ui->label_sign2->setPixmap(QPixmap::fromImage(image));
+        ui->label_sign2->setPixmap(image);
         m_label_flag[2] = true;
     }
     else if(!m_label_flag[3])
     {
-        ui->label_sign3->setPixmap(QPixmap::fromImage(image));
+        ui->label_sign3->setPixmap(image);
         m_label_flag[3] = true;
     }
     else if(!m_label_flag[4])
     {
-        ui->label_sign4->setPixmap(QPixmap::fromImage(image));
+        ui->label_sign4->setPixmap(image);
         m_label_flag[4] = true;
     }
 
@@ -666,19 +699,14 @@ void MainWindow::on_pushButton_showSign_clicked()
 *@功能 显示保存检测到的交通标志图片
 *
 */
-void MainWindow::showSaveImage()
+void MainWindow::showSaveImage(Mat &roi)
 {
-    //深拷贝，防止更改原图像，对后面的车道线检测造成影响
-    Mat roi = m_frame.clone();
-    //颜色空间转换
-    cv::cvtColor(roi, roi, CV_BGR2RGB);
     //拼接图片文件名
-    QString fileName = "signimages/"+QString::number(m_num)+".jpg";
+    string fileName = "signimages/"+to_string(m_num)+".jpg";
+    //保存图片
+    imwrite(fileName,roi);
     //图片号加1
     m_num++;
-    //Mat转QImage
-    QImage image = QImage((uchar*)(roi.data), roi.cols, roi.rows, QImage::Format_RGB888);
-    image.save(fileName,"JPG");
-    //显示image
-    selectLabelShow(image);
+    //显示roi
+    selectLabelShow(fileName);
 }

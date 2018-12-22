@@ -213,7 +213,7 @@ std::vector<Point> LaneDetector::regression(std::vector<std::vector<Vec4i> > lef
         }
     }
 
-    // 获得了一个斜率和偏移点，应用线方程来获得线点
+    // 获得了一个斜率和偏移点，应用线方程来获得直线的初始和终点
     int ini_y = inputImage.rows;
     //与刚兴趣的区域相同
     int fin_y = 210;
