@@ -52,21 +52,35 @@ Mat LaneDetector::mask(Mat img_edges)
     Mat output;
     Mat mask = Mat::zeros(img_edges.size(), img_edges.type());
 
-    // 自己调出感兴趣的位置
-    Point pts[4] = {
-        Point(80, 368),
-        Point(280, 210),
-        Point(320, 210),
-        Point(640, 368)
-    };
+    // 自己调出感兴趣的位置  左边线的区域 按顺序连接
+    Point left[4] = {
+             Point(0, 368),
+             Point(280, 210),
+             Point(320, 210),
+             Point(200, 368)
+         };
 
-    // 创建二进制多边形mask
-    fillConvexPoly(mask, pts, 4, Scalar(255, 0, 0));
+     // 创建二进制多边形mask
+     fillConvexPoly(mask, left, 4, Scalar(255, 0, 0));
+
+     // 将img_edges和mask相乘得到output
+     bitwise_and(img_edges, mask, output);
+
+    Point right[5] = {
+            Point(520, 368),
+            Point(340, 210),
+            Point(440, 210),
+            Point(640, 338),
+            Point(640, 368)
+        };
+
+    // 创建二进制多边形mask 右边线的区域 按顺序连接
+    fillConvexPoly(mask, right, 5, Scalar(255, 0, 0));
 
     // 将img_edges和mask相乘得到output
     bitwise_and(img_edges, mask, output);
 
-//    imshow("img_edges",img_edges);
+    //imshow("img_edges",img_edges);
 //    imshow("mask",mask);
 //    imshow("output",output);
 
